@@ -1,19 +1,24 @@
 priority_weight = {"low": 1, "med":2, "high":3}
-tag_types={">": "I_am", "<": "looking_for", "-": "block"}
+tag_shorthand_to_name={">": "I_am", "<": "looking_for", "-": "block"}
 class Block: pass
 
-def tags_str_to_dict(input):
+users=[
+    {"tags_with_priority": {"low":"<f >e", "med":"", "high":""}},
+    {"tags_with_priority": {"low":"<f", "med":"", "high":""}},
+]
+
+def tags_str_to_dict(input, default_prefix=None):
     input = input.split()
     output = {"I_am": set(), "looking_for": set(), "block": set()}
     for tag in input:
-        if tag.startswith(">"):
-            output["I_am"].add(tag[1:])
-        elif tag.startswith("<"):
-            output["looking_for"].add(tag[1:])
-        elif tag.startswith("-"):
-            output["block"].add(tag[1:])
-        else:
-            raise ValueError
+        try:
+            output[tag_shorthand_to_name[tag[0]]].add(tag[1:])
+        except KeyError:
+            if default_prefix == None:
+                raise ValueError
+            else:
+                for type_name in default_prefix:
+                    output[type_name].add(tag)
     return output
 
 def tags_dict_to_str(input):
@@ -50,33 +55,50 @@ def count_points_with_priority(my_tags, his_tags):
             his_result = his_result * priority_weight[his_priority]
             my_final_result += my_result
             his_final_result += his_result
-            print(f"{my_result} {his_result}")
     return (my_final_result, his_final_result)
-        
-empty_user={"low": "", "med": "", "high": ">f <h"}
 
 def remove_tags(tags, tags_to_remove):
-    tags_to_remove_dict = tags_str_to_dict(tags_to_remove)
+    print(("remove_tags", tags, tags_to_remove))
+    tags_dict = tags_str_to_dict(tags)
+    tags_to_remove_dict = tags_str_to_dict(tags_to_remove, default_prefix=["I_am", "looking_for", "block"])
     for tag_type in ["I_am", "looking_for", "block"]:
-        tags_to_remove_dict[tag_type] = tags_dict[tag_type] - tags[tag_type]
-    user[priority] = tags_dict_to_str(tags_dict)
+        tags_dict[tag_type] = tags_dict[tag_type] - tags_to_remove_dict[tag_type]
+    tags = tags_dict_to_str(tags_dict)
+    return tags
 
-def remove_tag_with_priority(user, tags):
-    tags = tags_str_to_dict(tags)
-    for priority in ["low", "med", "high"]:
-        user[priority] = remove_tags(user[priority], tags)
-    return user
+def remove_tags_with_priority(tags_with_priority, tags, priority="all"):
+    if priority != "all":
+        tags_with_priority[priority] = remove_tags(tags_with_priority[priority], tags)
+    else:
+        for priority in ["low", "med", "high"]:
+            tags_with_priority[priority] = remove_tags(tags_with_priority[priority], tags)
+    return tags_with_priority
 
-def add_tag_with_priority(user, tags, priority):
-    user = remove_tag(user, tags)
-    tags = tags_str_to_dict(tags)
-    print(tags)
-    print(user[priority])
-    user_dict = tags_str_to_dict(user[priority])
-    print(user_dict)
+def add_tags(tags, tags_to_add):
+    tags_dict = tags_str_to_dict(tags)
+    tags_to_add_dict = tags_str_to_dict(tags_to_add, default_prefix=["I_am", "looking_for"])
     for tag_type in ["I_am", "looking_for", "block"]:
-        user_dict[tag_type] = set.union(user_dict[tag_type], tags[tag_type])
-    user[priority] = tags_dict_to_str(user[priority])
-    return user
+        tags_dict[tag_type].update(tags_to_add_dict[tag_type])
+    tags = tags_dict_to_str(tags_dict)
+    return tags
 
+def add_tag_with_priority(tags_with_priority, tags, priority):
+    tags_with_priority = remove_tags_with_priority(tags_with_priority, tags)
+    tags_with_priority[priority] = add_tags(tags_with_priority[priority], tags)
+    return tags_with_priority
+
+def search(me):
+    tags_with_priority = me["tags_with_priority"]
+    for user in users:
+        print(count_points_with_priority(tags_with_priority, user["tags_with_priority"]))
+
+def parse_command(command):
+    pass
+
+remove_tags(">f <f", "f")
+add_tags(">f","<f")
+#add_tag_with_priority({"low":">f"}, "<f", "low")
+#remove_tags_with_priority({"low":">f"}, ">f", "low")
+#remove_tags_with_priority({"low":">f <e", "med":"", "high":""}, ">f")
+me = {"tags_with_priority": {"low":">f <e", "med":"", "high":""}}
 import pdb; pdb.set_trace()
